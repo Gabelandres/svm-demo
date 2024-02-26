@@ -1,56 +1,52 @@
-#Input the relevant libraries
-import numpy as np
-import pandas as pd
 import streamlit as st
 import altair as alt
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.naive_bayes import GaussianNB
-from sklearn.linear_model import LogisticRegression
+import seaborn as sns; sns.set()
+from sklearn.model_selection import train_test_split
 from sklearn import svm
 from sklearn.datasets import make_blobs
+from sklearn.pipeline import make_pipeline
 from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
 # Define the Streamlit app
 def app():
+    # Display the DataFrame with formatting
+    st.title("Support Vector Machine Classifier")
+    text = """Louie F. Cervantes, M.Eng. \n\n
+    CCS 229 - Intelligent Systems
+    Computer Science Department
+    College of Information and Communications Technology
+    West Visayas State University"""
+    st.text(text)
 
-    st.title('Logistic Regression, Naive Bayes Classifiers and Support Vector Machine')
-    st.subheader('by Louie F. Cervantes M.Eng., WVSU College of ICT')
- 
-    st.write('Logistic Regression:')
-    text = """Strengths: \nMore flexible: Can capture complex relationships between 
-    features and classes, even when they are non-linear. No strong independence assumption: 
-    Doesn't rely on the assumption that features are independent, which can be 
-    helpful for overlapping clusters."""
+    st.subheader('Description')
+    st.write('Support Vector Machines (SVM):')
+    text = """Supervised learning algorithm: Used for both classification and regression.
+    Linear decision boundary: In high-dimensional spaces, it uses the 
+    kernel trick to create a non-linear decision boundary by implicitly 
+    mapping data points to higher dimensions.
+    Maximizing margin: Aims to find the hyperplane that separates classes 
+    with the largest margin (distance between the hyperplane and the closest data 
+    points on either side). This makes it robust to noise and outliers.
+    """
     st.write(text)
-    text = """Weaknesses: \nOverfitting potential: Can overfit the training data when 
-    dealing with high dimensionality 
-    or small datasets."""
-    st.write(text)
-
-    st.write('Naive Bayes')
-    text = """Strengths: \nEfficient: Works well with high-dimensional datasets 
-    due to its simplicity. 
-    Fast training: Requires less training time compared to logistic regression. 
-    Interpretable: Easy to understand the contribution of each feature to the prediction."""
-    st.write(text)
-
-    text = """Weaknesses:\nIndependence assumption: Relies on the strong 
-    assumption of feature independence, which can be violated in overlapping clusters, 
-    leading to inaccurate predictions."""
-    st.write(text)
-
-    st.write('Support Vector Machine')
-    st.write("""Strong in complex, high-dimensional spaces, 
-             but computationally expensive.""")
-
-    st.write("""Strengths: Handles high dimensions, maximizes separation, efficient memory use, 
-              and offers some non-linearity through kernels. Weaknesses: Computationally 
-              demanding, can be difficult to interpret, and requires careful parameter tuning. 
-              SVMs are powerful for complex problems, but their efficiency and 
-              interpretability need consideration.""")
+    st.write('Key Features:')
+    st.write("""Dataset Generation:
+    Randomly generates data points belonging to two clusters using user-defined settings:
+    Number of clusters
+    Number of data points per cluster
+    Cluster means and standard deviations
+    Overlap control (overlap_factor) to adjust cluster spread""")
+    st.write('SVM Classification:')
+    st.write("""Trains an SVM model with the chosen kernel (linear or radial basis function) and hyperparameters.
+    Evaluates the model's performance using accuracy, precision, recall, and F1-score.""")
+    st.write('Visualization:')
+    st.write("""Interactive scatter plot displaying data points colored by 
+    their true and predicted classes. Decision boundary overlayed on the plot. 
+    Performance metrics displayed dynamically as cluster overlap changes.""")
 
     # Create a slider with a label and initial value
     n_samples = st.slider(
@@ -76,85 +72,75 @@ def app():
         max_value=6,
         value=2,  # Initial value
     )
-
-    # Create the selecton of classifier
-    clf = GaussianNB() 
-    options = ['Logistic Regression', 'Naive Bayes', 'Support Vector Machine']
-    selected_option = st.selectbox('Select the classifier', options)
-    if selected_option =='Logistic Regression':
-        clf = LogisticRegression(C=1.0, class_weight=None, 
-            dual=False, fit_intercept=True,
-            intercept_scaling=1, max_iter=100, multi_class='auto',
-            n_jobs=1, penalty='l2', random_state=42, solver='lbfgs',
-            tol=0.0001, verbose=0, warm_start=False)
-    elif selected_option=='Support Vector Machine':
-        clf = svm.SVC(kernel='linear', C=1000)
-    else:
-        clf = GaussianNB()
-        
+    
     if st.button('Start'):
         centers = generate_random_points_in_square(-4, 4, -4, 4, n_clusters)
         X, y = make_blobs(n_samples=n_samples, n_features=2,
-                    cluster_std=cluster_std, centers = centers,
-                    random_state=random_state)       
-        
-        # Split the dataset into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, \
-            test_size=0.2, random_state=42)
-        
-        clf.fit(X_train,y_train)
-        y_test_pred = clf.predict(X_test)
-        st.subheader('Confusion Matrix')
+                        cluster_std=cluster_std, centers = centers,
+                        random_state=random_state)
+                   
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        st.write('Confusion Matrix')
-        cm = confusion_matrix(y_test, y_test_pred)
-        st.text(cm)
+        clfSVM = svm.SVC(kernel='linear', C=1000)
+        clfSVM.fit(X_train, y_train)
+        y_test_pred = clfSVM.predict(X_test)
+
         st.subheader('Performance Metrics')
         st.text(classification_report(y_test, y_test_pred))
-        st.subheader('VIsualization')
-        visualize_classifier(clf, X_test, y_test_pred)
-        st.session_state['new_cluster'] = False
 
-def visualize_classifier(classifier, X, y, title=''):
-    # Define the minimum and maximum values for X and Y
-    # that will be used in the mesh grid
-    min_x, max_x = X[:, 0].min() - 1.0, X[:, 0].max() + 1.0
-    min_y, max_y = X[:, 1].min() - 1.0, X[:, 1].max() + 1.0
+        st.subheader('Confusion Matrix')
+        cm = confusion_matrix(y_test, y_test_pred)
+        st.write(cm)
+        st.subheader('Visualization')
 
-    # Define the step size to use in plotting the mesh grid 
-    mesh_step_size = 0.01
+        if n_clusters == 2:
+            #use the Numpy array to merge the data and test columns
+            dataset = np.column_stack((X, y))
 
-    # Define the mesh grid of X and Y values
-    x_vals, y_vals = np.meshgrid(np.arange(min_x, max_x, mesh_step_size), np.arange(min_y, max_y, mesh_step_size))
+            df = pd.DataFrame(dataset)
+            # Add column names to the DataFrame
+            df = df.rename(columns={0: 'X', 1: 'Y', 2: 'Class'})
+            # Extract data and classes
+            x = df['X']
+            y = df['Y']
+            classes = df['Class'].unique()
 
-    # Run the classifier on the mesh grid
-    output = classifier.predict(np.c_[x_vals.ravel(), y_vals.ravel()])
-
-    # Reshape the output array
-    output = output.reshape(x_vals.shape)
+            # Create the figure and axes object
+            fig, ax = plt.subplots(figsize=(9, 9))
     
-    # Create the figure and axes objects
-    fig, ax = plt.subplots()
+            # Scatter plot of the data
+            #ax.scatter(X[:, 0], X[:, 1], c=y, s=30, cmap=plt.cm.Paired)
+            sns.scatterplot(
+                x = "X",
+                y = "Y",
+                hue = "Class",
+                data = df,
+                palette="Set1",
+                ax=ax  # Specify the axes object
+            )          
 
-    # Specify the title
-    ax.set_title(title)
-    
-    # Choose a color scheme for the plot
-    ax.pcolormesh(x_vals, y_vals, output, cmap=plt.cm.gray)
-    
-    # Overlay the training points on the plot
-    ax.scatter(X[:, 0], X[:, 1], c=y, s=75, edgecolors='black', linewidth=1, cmap=plt.cm.Paired)
-    
-    # Specify the boundaries of the plot
-    ax.set_xlim(x_vals.min(), x_vals.max())
-    ax.set_ylim(y_vals.min(), y_vals.max())
-    
-    # Specify the ticks on the X and Y axes
-    ax.set_xticks(np.arange(int(X[:, 0].min() - 1), int(X[:, 0].max() + 1), 1.0))
-    ax.set_yticks(np.arange(int(X[:, 1].min() - 1), int(X[:, 1].max() + 1), 1.0))
 
+            
+            # Plot the decision function directly on ax
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+
+            xx = np.linspace(xlim[0], xlim[1], 30)
+            yy = np.linspace(ylim[0], ylim[1], 30)
+            YY, XX = np.meshgrid(yy, xx)
+            xy = np.vstack([XX.ravel(), YY.ravel()]).T
+            Z = clfSVM.decision_function(xy).reshape(XX.shape)
     
-    st.pyplot(fig)
+            ax.contour(XX, YY, Z, colors='k', levels=[-1, 0, 1], alpha=0.5, linestyles=['--', '--', '--'])
+    
+            #plot support vectors
+            ax.scatter(clfSVM.support_vectors_[:,0], 
+                clfSVM.support_vectors_[:,1], s=100, 
+                linewidth=2, facecolor='none', edgecolor='black')
+    
+            st.pyplot(fig)
+        else :
+            st.write('Support vectors of n_classes > 2 cannot be plotted on a 2D graph.')
 
 def generate_random_points_in_square(x_min, x_max, y_min, y_max, num_points):
     """
@@ -175,6 +161,9 @@ def generate_random_points_in_square(x_min, x_max, y_min, y_max, num_points):
     points = np.random.uniform(low=[x_min, y_min], high=[x_max, y_max], size=(num_points, 2))
 
     return points
+
+if __name__ == "__main__":
+    app()
 
 #run the app
 if __name__ == "__main__":
